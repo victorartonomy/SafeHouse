@@ -12,17 +12,23 @@ class CategoriesLoadRequested extends CategoryEvent {
 
 class CategoryAddRequested extends CategoryEvent {
   final String name;
-  const CategoryAddRequested(this.name);
+  final String? defaultPassword;
+  const CategoryAddRequested(this.name, {this.defaultPassword});
   @override
-  List<Object?> get props => [name];
+  List<Object?> get props => [name, defaultPassword];
 }
 
-class CategoryRenameRequested extends CategoryEvent {
+class CategoryUpdateRequested extends CategoryEvent {
   final String id;
-  final String newName;
-  const CategoryRenameRequested({required this.id, required this.newName});
+  final String? newName;
+  final String? defaultPassword;
+  const CategoryUpdateRequested({
+    required this.id,
+    this.newName,
+    this.defaultPassword,
+  });
   @override
-  List<Object?> get props => [id, newName];
+  List<Object?> get props => [id, newName, defaultPassword];
 }
 
 class CategoryDeleteRequested extends CategoryEvent {
