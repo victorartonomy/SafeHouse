@@ -18,22 +18,31 @@ class Category extends Equatable {
   /// the same AES key.
   final Uint8List salt;
 
+  /// Optional default password for this category.
+  final String? defaultPassword;
+
   final DateTime createdAt;
 
   const Category({
     required this.id,
     required this.name,
     required this.salt,
+    this.defaultPassword,
     required this.createdAt,
   });
 
-  Category copyWith({String? name}) => Category(
+  Category copyWith({
+    String? name,
+    String? defaultPassword,
+  }) =>
+      Category(
         id: id,
         name: name ?? this.name,
         salt: salt,
+        defaultPassword: defaultPassword ?? this.defaultPassword,
         createdAt: createdAt,
       );
 
   @override
-  List<Object?> get props => [id, name, salt, createdAt];
+  List<Object?> get props => [id, name, salt, defaultPassword, createdAt];
 }

@@ -15,11 +15,15 @@ class CloudRepositoryImpl implements CloudRepository {
     required String filePath,
     required String remoteFileName,
     required CloudTransferHandle handle,
+    String? categoryName,
+    String? categoryId,
   }) {
     return remoteDataSource.uploadFile(
       filePath: filePath,
       remoteFileName: remoteFileName,
       handle: handle,
+      categoryName: categoryName,
+      categoryId: categoryId,
     );
   }
 
@@ -27,10 +31,12 @@ class CloudRepositoryImpl implements CloudRepository {
   Stream<CloudTransferEvent> downloadFile({
     required String remoteFileName,
     required CloudTransferHandle handle,
+    String? categoryName,
   }) {
     return remoteDataSource.downloadFile(
       remoteFileName: remoteFileName,
       handle: handle,
+      categoryName: categoryName,
     );
   }
 
@@ -45,9 +51,12 @@ class CloudRepositoryImpl implements CloudRepository {
   }
 
   @override
-  Future<Either<Failure, void>> deleteCloudFile(String fileName) async {
+  Future<Either<Failure, void>> deleteCloudFile(
+    String fileName, {
+    String? categoryName,
+  }) async {
     try {
-      await remoteDataSource.deleteCloudFile(fileName);
+      await remoteDataSource.deleteCloudFile(fileName, categoryName: categoryName);
       return const Right(null);
     } catch (e) {
       return Left(StorageFailure(e.toString()));

@@ -72,10 +72,13 @@ class CloudBackupCubit extends Cubit<CloudBackupState> {
     emit(CloudBackupLoaded(files: _currentFiles(), transfers: transfers));
   }
 
-  Future<void> deleteFile(String fileName) async {
+  Future<void> deleteFile(String fileName, {String? categoryName}) async {
     if (_subs.containsKey(fileName)) return;
     emit(CloudBackupLoading());
-    final result = await _cloudRepository.deleteCloudFile(fileName);
+    final result = await _cloudRepository.deleteCloudFile(
+      fileName,
+      categoryName: categoryName,
+    );
     result.fold(
       (failure) {
         emit(CloudBackupError(message: failure.message));
@@ -90,7 +93,11 @@ class CloudBackupCubit extends Cubit<CloudBackupState> {
     );
   }
 
-  Future<void> pickAndUploadFile(String customName) async {
+  Future<void> pickAndUploadFile(
+    String customName, {
+    String? categoryName,
+    String? categoryId,
+  }) async {
     try {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
@@ -120,7 +127,12 @@ class CloudBackupCubit extends Cubit<CloudBackupState> {
         return;
       }
 
-      await uploadFile(path, customName);
+      await uploadFile(
+        path,
+        customName,
+        categoryName: categoryName,
+        categoryId: categoryId,
+      );
     } catch (e) {
       emit(CloudBackupError(message: 'File picker error: $e'));
       loadCloudFiles();
@@ -129,7 +141,12 @@ class CloudBackupCubit extends Cubit<CloudBackupState> {
 
   /// Upload with live progress. Normalizes the remote name and ensures the
   /// file list is loaded so progress can attach to a stable row.
-  Future<void> uploadFile(String filePath, String customName) async {
+  Future<void> uploadFile(
+    String filePath,
+    String customName, {
+    String? categoryName,
+    String? categoryId,
+  }) async {
     String remoteName = customName.trim();
     if (!remoteName.toLowerCase().endsWith('.enc')) {
       remoteName += '.enc';
@@ -141,9 +158,11 @@ class CloudBackupCubit extends Cubit<CloudBackupState> {
       bool ok = false;
       enabled.fold((_) {}, (v) => ok = v);
       if (!ok) {
-        emit(const CloudBackupError(
-          message: 'Cloud Storage is disabled. Enable it in Settings.',
-        ));
+        emit(
+          const CloudBackupError(
+            message: 'Cloud Storage is disabled. Enable it in Settings.',
+          ),
+        );
         return;
       }
       final files = await _cloudRepository.getCloudFiles();
@@ -159,6 +178,8 @@ class CloudBackupCubit extends Cubit<CloudBackupState> {
       filePath: filePath,
       remoteFileName: remoteName,
       handle: handle,
+      categoryName: categoryName,
+      categoryId: categoryId,
     );
     _watchTransfer(
       key: remoteName,
@@ -169,7 +190,7 @@ class CloudBackupCubit extends Cubit<CloudBackupState> {
     );
   }
 
-  Future<void> downloadFile(String fileName) async {
+  Future<void> downloadFile(String fileName, {String? categoryName}) async {
     if (_subs.containsKey(fileName)) return;
     if (state is! CloudBackupLoaded) {
       await loadCloudFiles();
@@ -179,6 +200,7 @@ class CloudBackupCubit extends Cubit<CloudBackupState> {
     final stream = _cloudRepository.downloadFile(
       remoteFileName: fileName,
       handle: handle,
+      categoryName: categoryName,
     );
     _watchTransfer(
       key: fileName,

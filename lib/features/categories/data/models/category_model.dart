@@ -22,11 +22,15 @@ class CategoryModel extends HiveObject {
   @HiveField(3)
   final DateTime createdAt;
 
+  @HiveField(4)
+  String? defaultPassword;
+
   CategoryModel({
     required this.id,
     required this.name,
     required this.salt,
     required this.createdAt,
+    this.defaultPassword,
   });
 
   Category toEntity() => Category(
@@ -34,6 +38,7 @@ class CategoryModel extends HiveObject {
         name: name,
         salt: Uint8List.fromList(salt),
         createdAt: createdAt,
+        defaultPassword: defaultPassword,
       );
 
   factory CategoryModel.fromEntity(Category c) => CategoryModel(
@@ -41,5 +46,6 @@ class CategoryModel extends HiveObject {
         name: c.name,
         salt: c.salt.toList(),
         createdAt: c.createdAt,
+        defaultPassword: c.defaultPassword,
       );
 }

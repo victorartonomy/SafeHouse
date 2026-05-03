@@ -12,16 +12,19 @@ abstract class CloudRemoteDataSource {
     required String filePath,
     required String remoteFileName,
     required CloudTransferHandle handle,
+    String? categoryName,
+    String? categoryId,
   });
 
   Stream<CloudTransferEvent> downloadFile({
     required String remoteFileName,
     required CloudTransferHandle handle,
+    String? categoryName,
   });
 
   Future<List<CloudFile>> getCloudFiles();
 
-  Future<void> deleteCloudFile(String fileName);
+  Future<void> deleteCloudFile(String fileName, {String? categoryName});
 
   Future<void> deleteAllCloudFiles();
 
@@ -57,9 +60,18 @@ class CloudRemoteDataSourceImpl implements CloudRemoteDataSource {
     required String filePath,
     required String remoteFileName,
     required CloudTransferHandle handle,
+    String? categoryName,
+    String? categoryId,
   }) {
     final controller = StreamController<CloudTransferEvent>();
-    _startUpload(controller, filePath, remoteFileName, handle);
+    _startUpload(
+      controller,
+      filePath,
+      remoteFileName,
+      handle,
+      categoryName,
+      categoryId,
+    );
     return controller.stream;
   }
 
@@ -68,6 +80,8 @@ class CloudRemoteDataSourceImpl implements CloudRemoteDataSource {
     String filePath,
     String remoteFileName,
     CloudTransferHandle handle,
+    String? categoryName,
+    String? categoryId,
   ) async {
     try {
       final enabled = await isCloudStorageEnabled();
@@ -84,9 +98,20 @@ class CloudRemoteDataSourceImpl implements CloudRemoteDataSource {
         await controller.close();
         return;
       }
-      final ref =
-          firebaseStorage.ref().child('users/$_userId/$remoteFileName');
-      final task = ref.putFile(file);
+
+      final folder = categoryName ?? 'Others';
+      final ref = firebaseStorage
+          .ref()
+          .child('users/$_userId/$folder/$remoteFileName');
+
+      final metadata = SettableMetadata(
+        customMetadata: {
+          if (categoryId != null) 'categoryId': categoryId,
+          'categoryName': folder,
+        },
+      );
+
+      final task = ref.putFile(file, metadata);
       handle.attach(task);
       _forward(task.snapshotEvents, controller, successLocalPath: null);
     } catch (e) {
@@ -99,9 +124,10 @@ class CloudRemoteDataSourceImpl implements CloudRemoteDataSource {
   Stream<CloudTransferEvent> downloadFile({
     required String remoteFileName,
     required CloudTransferHandle handle,
+    String? categoryName,
   }) {
     final controller = StreamController<CloudTransferEvent>();
-    _startDownload(controller, remoteFileName, handle);
+    _startDownload(controller, remoteFileName, handle, categoryName);
     return controller.stream;
   }
 
@@ -109,6 +135,7 @@ class CloudRemoteDataSourceImpl implements CloudRemoteDataSource {
     StreamController<CloudTransferEvent> controller,
     String remoteFileName,
     CloudTransferHandle handle,
+    String? categoryName,
   ) async {
     try {
       final enabled = await isCloudStorageEnabled();
@@ -123,8 +150,10 @@ class CloudRemoteDataSourceImpl implements CloudRemoteDataSource {
         subfolder: _encryptedSubfolder,
         filename: remoteFileName,
       );
-      final ref =
-          firebaseStorage.ref().child('users/$_userId/$remoteFileName');
+      final folder = categoryName ?? 'Others';
+      final ref = firebaseStorage
+          .ref()
+          .child('users/$_userId/$folder/$remoteFileName');
       final task = ref.writeToFile(File(localPath));
       handle.attach(task);
       _forward(task.snapshotEvents, controller, successLocalPath: localPath);
@@ -189,11 +218,13 @@ class CloudRemoteDataSourceImpl implements CloudRemoteDataSource {
   @override
   Future<List<CloudFile>> getCloudFiles() async {
     try {
-      final ref = firebaseStorage.ref().child('users/$_userId');
-      final listResult = await ref.listAll();
+      final rootRef = firebaseStorage.ref().child('users/$_userId');
+      final rootList = await rootRef.listAll();
 
       final files = <CloudFile>[];
-      for (var item in listResult.items) {
+
+      // Handle legacy files in the root (legacy 'Others')
+      for (var item in rootList.items) {
         final metadata = await item.getMetadata();
         files.add(
           CloudFile(
@@ -201,9 +232,30 @@ class CloudRemoteDataSourceImpl implements CloudRemoteDataSource {
             fullPath: item.fullPath,
             sizeBytes: metadata.size ?? 0,
             timeCreated: metadata.timeCreated,
+            categoryName: 'Others',
           ),
         );
       }
+
+      // Handle files in category folders
+      for (var prefix in rootList.prefixes) {
+        final folderName = prefix.name;
+        final folderList = await prefix.listAll();
+        for (var item in folderList.items) {
+          final metadata = await item.getMetadata();
+          files.add(
+            CloudFile(
+              name: item.name,
+              fullPath: item.fullPath,
+              sizeBytes: metadata.size ?? 0,
+              timeCreated: metadata.timeCreated,
+              categoryName: folderName,
+              categoryId: metadata.customMetadata?['categoryId'],
+            ),
+          );
+        }
+      }
+
       final epoch = DateTime.fromMillisecondsSinceEpoch(0);
       files.sort(
         (a, b) => (b.timeCreated ?? epoch).compareTo(a.timeCreated ?? epoch),
@@ -217,9 +269,25 @@ class CloudRemoteDataSourceImpl implements CloudRemoteDataSource {
   }
 
   @override
-  Future<void> deleteCloudFile(String fileName) async {
-    final ref = firebaseStorage.ref().child('users/$_userId/$fileName');
-    await ref.delete();
+  Future<void> deleteCloudFile(String fileName, {String? categoryName}) async {
+    final folder = categoryName ?? 'Others';
+    final ref = firebaseStorage.ref().child('users/$_userId/$folder/$fileName');
+    try {
+      await ref.delete();
+    } catch (e) {
+      // If folder-based delete fails, try root for legacy support
+      if (categoryName == null || categoryName == 'Others') {
+        try {
+          final rootRef =
+              firebaseStorage.ref().child('users/$_userId/$fileName');
+          await rootRef.delete();
+        } catch (_) {
+          rethrow;
+        }
+      } else {
+        rethrow;
+      }
+    }
   }
 
   @override

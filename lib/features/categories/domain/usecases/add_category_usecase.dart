@@ -5,5 +5,6 @@ class AddCategoryUseCase {
   final CategoryRepository _repository;
   AddCategoryUseCase(this._repository);
 
-  Future<Category> call(String name) => _repository.add(name);
+  Future<Category> call(String name, {String? defaultPassword}) =>
+      _repository.add(name, defaultPassword: defaultPassword);
 }

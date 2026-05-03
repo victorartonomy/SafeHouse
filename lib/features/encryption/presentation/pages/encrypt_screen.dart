@@ -59,13 +59,18 @@ class _EncryptScreenState extends State<EncryptScreen> {
     final category = _selectedCategory;
 
     if (category != null) {
-      // Category flow — prompt password, derive key, encrypt with derived key.
-      final password = await PasswordPromptDialog.show(
-        context,
-        categoryName: category.name,
-        title: 'Enter category password',
-        confirmLabel: 'Encrypt',
-      );
+      String? password = category.defaultPassword;
+
+      if (password == null || password.isEmpty) {
+        // Category flow — prompt password, derive key, encrypt with derived key.
+        password = await PasswordPromptDialog.show(
+          context,
+          categoryName: category.name,
+          title: 'Enter category password',
+          confirmLabel: 'Encrypt',
+        );
+      }
+
       if (password == null || password.isEmpty) return;
       if (!context.mounted) return;
 

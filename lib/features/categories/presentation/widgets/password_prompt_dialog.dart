@@ -8,12 +8,14 @@ class PasswordPromptDialog extends StatefulWidget {
   final String categoryName;
   final String title;
   final String confirmLabel;
+  final String? initialPassword;
 
   const PasswordPromptDialog({
     super.key,
     required this.categoryName,
     this.title = 'Enter password',
     this.confirmLabel = 'Continue',
+    this.initialPassword,
   });
 
   /// Convenience launcher.
@@ -22,6 +24,7 @@ class PasswordPromptDialog extends StatefulWidget {
     required String categoryName,
     String title = 'Enter password',
     String confirmLabel = 'Continue',
+    String? initialPassword,
   }) {
     return showDialog<String>(
       context: context,
@@ -30,6 +33,7 @@ class PasswordPromptDialog extends StatefulWidget {
         categoryName: categoryName,
         title: title,
         confirmLabel: confirmLabel,
+        initialPassword: initialPassword,
       ),
     );
   }
@@ -39,8 +43,14 @@ class PasswordPromptDialog extends StatefulWidget {
 }
 
 class _PasswordPromptDialogState extends State<PasswordPromptDialog> {
-  final _controller = TextEditingController();
+  late final TextEditingController _controller;
   bool _obscure = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialPassword);
+  }
 
   @override
   void dispose() {

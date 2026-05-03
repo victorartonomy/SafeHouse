@@ -35,7 +35,7 @@ class CategoryRepositoryImpl implements CategoryRepository {
   }
 
   @override
-  Future<Category> add(String name) async {
+  Future<Category> add(String name, {String? defaultPassword}) async {
     final trimmed = name.trim();
     if (trimmed.isEmpty) {
       throw const StorageFailure('Category name cannot be empty.');
@@ -53,32 +53,43 @@ class CategoryRepositoryImpl implements CategoryRepository {
       name: trimmed,
       salt: salt.toList(),
       createdAt: DateTime.now().toUtc(),
+      defaultPassword: defaultPassword?.trim(),
     );
     await _local.save(model);
     return model.toEntity();
   }
 
   @override
-  Future<Category> rename(String id, String newName) async {
-    final trimmed = newName.trim();
-    if (trimmed.isEmpty) {
-      throw const StorageFailure('Category name cannot be empty.');
-    }
-
+  Future<Category> update(
+    String id, {
+    String? newName,
+    String? defaultPassword,
+  }) async {
     final existing = await _local.getById(id);
     if (existing == null) {
       throw const StorageFailure('Category not found.');
     }
 
-    // Check duplicate name (excluding self).
-    final all = await _local.getAll();
-    if (all.any(
-      (m) => m.id != id && m.name.toLowerCase() == trimmed.toLowerCase(),
-    )) {
-      throw StorageFailure('A category named "$trimmed" already exists.');
+    if (newName != null) {
+      final trimmed = newName.trim();
+      if (trimmed.isEmpty) {
+        throw const StorageFailure('Category name cannot be empty.');
+      }
+
+      // Check duplicate name (excluding self).
+      final all = await _local.getAll();
+      if (all.any(
+        (m) => m.id != id && m.name.toLowerCase() == trimmed.toLowerCase(),
+      )) {
+        throw StorageFailure('A category named "$trimmed" already exists.');
+      }
+      existing.name = trimmed;
     }
 
-    existing.name = trimmed;
+    if (defaultPassword != null) {
+      existing.defaultPassword = defaultPassword.trim().isEmpty ? null : defaultPassword.trim();
+    }
+
     await _local.save(existing); // re-put preserves salt + id + createdAt
     return existing.toEntity();
   }

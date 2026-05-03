@@ -5,6 +5,10 @@ class UpdateCategoryUseCase {
   final CategoryRepository _repository;
   UpdateCategoryUseCase(this._repository);
 
-  Future<Category> call({required String id, required String newName}) =>
-      _repository.rename(id, newName);
+  Future<Category> call({
+    required String id,
+    String? newName,
+    String? defaultPassword,
+  }) =>
+      _repository.update(id, newName: newName, defaultPassword: defaultPassword);
 }

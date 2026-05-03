@@ -26,7 +26,7 @@ class CategoryBloc extends Bloc<CategoryEvent, CategoryState> {
         super(const CategoryState.initial()) {
     on<CategoriesLoadRequested>(_onLoad);
     on<CategoryAddRequested>(_onAdd);
-    on<CategoryRenameRequested>(_onRename);
+    on<CategoryUpdateRequested>(_onUpdate);
     on<CategoryDeleteRequested>(_onDelete);
   }
 
@@ -51,7 +51,7 @@ class CategoryBloc extends Bloc<CategoryEvent, CategoryState> {
   ) async {
     emit(state.copyWith(clearError: true));
     try {
-      await _add(event.name);
+      await _add(event.name, defaultPassword: event.defaultPassword);
       add(const CategoriesLoadRequested());
     } on Failure catch (f) {
       emit(state.copyWith(error: f.message));
@@ -60,18 +60,22 @@ class CategoryBloc extends Bloc<CategoryEvent, CategoryState> {
     }
   }
 
-  Future<void> _onRename(
-    CategoryRenameRequested event,
+  Future<void> _onUpdate(
+    CategoryUpdateRequested event,
     Emitter<CategoryState> emit,
   ) async {
     emit(state.copyWith(clearError: true));
     try {
-      await _update(id: event.id, newName: event.newName);
+      await _update(
+        id: event.id,
+        newName: event.newName,
+        defaultPassword: event.defaultPassword,
+      );
       add(const CategoriesLoadRequested());
     } on Failure catch (f) {
       emit(state.copyWith(error: f.message));
     } catch (e) {
-      emit(state.copyWith(error: 'Failed to rename: $e'));
+      emit(state.copyWith(error: 'Failed to update: $e'));
     }
   }
 

@@ -28,19 +28,33 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
   }
 
   Future<void> _showAddDialog(BuildContext context) async {
-    final controller = TextEditingController();
-    final name = await showDialog<String>(
+    final nameController = TextEditingController();
+    final passwordController = TextEditingController();
+    final result = await showDialog<(String, String?)>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('New Category'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: const InputDecoration(
-            labelText: 'Name',
-            hintText: 'e.g. Personal, Work, Bank',
-          ),
-          onSubmitted: (_) => Navigator.of(dialogContext).pop(controller.text),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameController,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'Name',
+                hintText: 'e.g. Personal, Work, Bank',
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: passwordController,
+              decoration: const InputDecoration(
+                labelText: 'Default Password (Optional)',
+                hintText: 'Auto-fills on encrypt/decrypt',
+              ),
+              obscureText: true,
+            ),
+          ],
         ),
         actions: [
           TextButton(
@@ -48,32 +62,55 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
             child: const Text('Cancel'),
           ),
           FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(controller.text),
+            onPressed: () => Navigator.of(dialogContext).pop(
+              (nameController.text, passwordController.text),
+            ),
             child: const Text('Add'),
           ),
         ],
       ),
     );
 
-    if (name != null && name.trim().isNotEmpty && context.mounted) {
-      context.read<CategoryBloc>().add(CategoryAddRequested(name.trim()));
+    if (result != null && result.$1.trim().isNotEmpty && context.mounted) {
+      context.read<CategoryBloc>().add(
+        CategoryAddRequested(
+          result.$1.trim(),
+          defaultPassword: result.$2?.trim(),
+        ),
+      );
     }
   }
 
-  Future<void> _showRenameDialog(
+  Future<void> _showEditDialog(
     BuildContext context,
     Category category,
   ) async {
-    final controller = TextEditingController(text: category.name);
-    final name = await showDialog<String>(
+    final nameController = TextEditingController(text: category.name);
+    final passwordController = TextEditingController(
+      text: category.defaultPassword,
+    );
+    final result = await showDialog<(String, String?)>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Rename Category'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: const InputDecoration(labelText: 'Name'),
-          onSubmitted: (_) => Navigator.of(dialogContext).pop(controller.text),
+        title: const Text('Edit Category'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameController,
+              autofocus: true,
+              decoration: const InputDecoration(labelText: 'Name'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: passwordController,
+              decoration: const InputDecoration(
+                labelText: 'Default Password (Optional)',
+                hintText: 'Auto-fills on encrypt/decrypt',
+              ),
+              obscureText: true,
+            ),
+          ],
         ),
         actions: [
           TextButton(
@@ -81,16 +118,22 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
             child: const Text('Cancel'),
           ),
           FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(controller.text),
+            onPressed: () => Navigator.of(dialogContext).pop(
+              (nameController.text, passwordController.text),
+            ),
             child: const Text('Save'),
           ),
         ],
       ),
     );
 
-    if (name != null && name.trim().isNotEmpty && context.mounted) {
+    if (result != null && context.mounted) {
       context.read<CategoryBloc>().add(
-        CategoryRenameRequested(id: category.id, newName: name.trim()),
+        CategoryUpdateRequested(
+          id: category.id,
+          newName: result.$1.trim().isNotEmpty ? result.$1.trim() : null,
+          defaultPassword: result.$2?.trim(),
+        ),
       );
     }
   }
@@ -228,9 +271,21 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                c.name,
-                                style: theme.textTheme.titleSmall,
+                              Row(
+                                children: [
+                                  Text(
+                                    c.name,
+                                    style: theme.textTheme.titleSmall,
+                                  ),
+                                  if (c.defaultPassword != null) ...[
+                                    const SizedBox(width: 6),
+                                    Icon(
+                                      Icons.key_outlined,
+                                      size: 14,
+                                      color: theme.colorScheme.primary,
+                                    ),
+                                  ],
+                                ],
                               ),
                               const SizedBox(height: 2),
                               Text(
@@ -241,9 +296,9 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                           ),
                         ),
                         IconButton(
-                          onPressed: () => _showRenameDialog(context, c),
+                          onPressed: () => _showEditDialog(context, c),
                           icon: const Icon(Icons.edit_outlined),
-                          tooltip: 'Rename',
+                          tooltip: 'Edit',
                         ),
                         IconButton(
                           onPressed: () => _confirmDelete(context, c),
