@@ -1,16 +1,59 @@
-# safe_house
+# SafeHouse 🛡️
 
-Military-grade AES-256 encryption
+Military-grade AES-256 file encryption application built with Flutter. SafeHouse provides secure, on-device file encryption and decryption with local key management, biometric authentication, and category-aware cloud backups.
 
-## Getting Started
+## ✨ Key Features
 
-This project is a starting point for a Flutter application.
+*   **AES-256 Encryption:** Securely encrypts and decrypts any file type using AES-256 (CBC mode).
+*   **Category Management:** Group files logically (e.g., Personal, Work, Bank) and assign default passwords for seamless auto-encryption.
+*   **Cloud Backup:** Securely backup and retrieve your encrypted files to Firebase Storage, organized cleanly into category-based folders.
+*   **Encrypted History:** Keeps a local, encrypted record of your operations using a Hive box secured by the OS Keystore/Keychain.
+*   **Biometric Authentication:** Gates access to sensitive areas of the app like your encryption history and cloud backups.
+*   **Local First:** No raw keys are ever stored in plaintext. Passwords and keys are derived and used strictly in memory.
 
-A few resources to get you started if this is your first Flutter project:
+## 🏗️ Architecture
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+The project strictly follows **Clean Architecture** principles with a clear separation of layers:
+*   **Domain:** Core business logic, Entities, and Use Cases.
+*   **Data:** Repository implementations, Hive local storage, Firebase remote storage, and AES-256 service.
+*   **Presentation:** Screen UIs and state management powered by `flutter_bloc` (Cubits/Blocs).
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## 🚀 Getting Started
+
+### Prerequisites
+*   Flutter SDK (^3.10.4)
+*   Android Studio / Xcode for mobile builds
+
+### Installation
+
+1.  **Clone the repository:**
+    ```bash
+    git clone https://github.com/yourusername/safe_house.git
+    cd safe_house
+    ```
+
+2.  **Install dependencies:**
+    ```bash
+    flutter pub get
+    ```
+
+3.  **Generate Hive Adapters:**
+    ```bash
+    dart run build_runner build --delete-conflicting-outputs
+    ```
+
+4.  **Run the app:**
+    ```bash
+    flutter run
+    ```
+
+## 🧪 Testing
+
+To run the suite of unit and widget tests:
+```bash
+flutter test
+```
+
+## 🔒 Security Notice
+
+SafeHouse is designed as a secure vault for your files. Please remember to securely store your **Secret Keys** or **Category Passwords**. If you lose your key/password, the encrypted files cannot be recovered.
