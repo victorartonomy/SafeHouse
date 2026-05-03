@@ -1,0 +1,85 @@
+name: safe_house
+description: "Military-grade AES-256 encryption"
+publish_to: "none"
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.10.4
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+
+  # State management
+  flutter_bloc: ^9.1.1
+  equatable: ^2.0.7
+  dartz: ^0.10.1
+
+  # Dependency injection
+  get_it: ^8.0.3
+
+  # AES encryption
+  encrypt: ^5.0.3
+  pointycastle: ^3.9.1
+
+  # File picking
+  file_picker: ^10.1.9
+
+  # Local file paths
+  path_provider: ^2.1.5
+
+  # Local key-value storage (Hive box is opened with an AES cipher
+  # whose key is kept in flutter_secure_storage)
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+
+  # OS-backed keystore for the Hive encryption key (Android Keystore /
+  # iOS Keychain). Prevents plaintext key material on disk.
+  flutter_secure_storage: ^9.2.2
+
+  # Biometric / device-credential auth that gates access to the
+  # History screen (which surfaces plaintext secret keys).
+  local_auth: ^2.3.0
+
+  # Runtime permissions — needed because we write to public shared
+  # storage (/storage/emulated/0/SafeHouse/) so files are visible in
+  # any file manager. Android 11+ requires MANAGE_EXTERNAL_STORAGE for
+  # arbitrary writes; Android 6–10 uses WRITE_EXTERNAL_STORAGE.
+  permission_handler: ^11.4.0
+
+  # Firebase Authentication
+  firebase_core: ^3.15.2
+  firebase_auth: ^5.4.1
+  google_sign_in: ^6.2.2
+  firebase_storage: ^12.4.1
+
+  # Local settings persistence
+  shared_preferences: ^2.5.2
+
+  # Unique IDs for history entries + filename disambiguation.
+  uuid: ^4.5.1
+
+  # Path manipulation utilities
+  path: ^1.9.0
+
+  # Date/time formatting for History screen
+  intl: ^0.20.2
+  flutter_launcher_icons: ^0.14.4
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  hive_generator: ^2.0.1
+  build_runner: ^2.4.13
+
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/logo.png"
+
+flutter:
+  uses-material-design: true

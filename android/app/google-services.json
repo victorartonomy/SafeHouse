@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "86553237919",
+    "project_id": "safehouse-7fa8a",
+    "storage_bucket": "safehouse-7fa8a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:86553237919:android:8cba09373ce7b3a9d145aa",
+        "android_client_info": {
+          "package_name": "com.victorartonomy.safe_house"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "86553237919-o0lj7jaggcdhojjstuevdm66batndsas.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCdb4lVUD3mpetUTunEvdgwERRqWGfXlS8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "86553237919-o0lj7jaggcdhojjstuevdm66batndsas.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "86553237919-tod2s6eqjlcne4t66h6ckovuo0m3602h.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.victorartonomy.com.safeHouse"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
