@@ -2,6 +2,7 @@ import 'package:hive/hive.dart';
 
 import '../../../../core/errors/failures.dart';
 import '../../domain/entities/encrypted_file.dart';
+import '../models/encrypted_file_model.dart';
 
 /// Contract for local persistence of [EncryptedFile] history.
 abstract class EncryptionLocalDataSource {
@@ -18,15 +19,16 @@ abstract class EncryptionLocalDataSource {
 class EncryptionLocalDataSourceImpl implements EncryptionLocalDataSource {
   static const String boxName = 'encrypted_files';
 
-  final Box<EncryptedFile> _box;
+  final Box<EncryptedFileModel> _box;
 
-  EncryptionLocalDataSourceImpl({required Box<EncryptedFile> box}) : _box = box;
+  EncryptionLocalDataSourceImpl({required Box<EncryptedFileModel> box}) : _box = box;
 
   @override
   Future<void> saveRecord(EncryptedFile record) async {
     try {
+      final model = EncryptedFileModel.fromDomain(record);
       // Keyed by UUID — idempotent put, fast lookup for delete.
-      await _box.put(record.id, record);
+      await _box.put(model.id, model);
     } catch (e) {
       throw StorageFailure('Failed to save record: $e');
     }
@@ -35,7 +37,7 @@ class EncryptionLocalDataSourceImpl implements EncryptionLocalDataSource {
   @override
   Future<List<EncryptedFile>> getAllRecords() async {
     try {
-      final records = _box.values.toList();
+      final records = _box.values.map((model) => model.toDomain()).toList();
       // Newest first.
       records.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       return records;

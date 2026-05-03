@@ -273,10 +273,10 @@ class _HistoryItemCard extends StatelessWidget {
   });
 
   Future<void> _copyKey(BuildContext context) async {
-    await Clipboard.setData(ClipboardData(text: record.secretKey));
+    // Legacy files had a secret key here, but it was removed for security.
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Secret key copied to clipboard')),
+      const SnackBar(content: Text('Secret key not available')),
     );
   }
 
@@ -388,19 +388,6 @@ class _HistoryItemCard extends StatelessWidget {
             _DetailRow(
               label: 'Encrypted file',
               value: p.basename(record.encryptedPath),
-            ),
-            const SizedBox(height: 6),
-            _DetailRow(
-              label: 'Secret key',
-              value: record.secretKey,
-              monospace: true,
-              trailing: IconButton(
-                onPressed: () => _copyKey(context),
-                icon: const Icon(Icons.copy_rounded, size: 18),
-                tooltip: 'Copy key',
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-              ),
             ),
           ],
         ),

@@ -13,7 +13,7 @@ import 'features/calculator/presentation/pages/calculator_screen.dart';
 import 'features/categories/data/models/category_model.dart';
 import 'features/categories/presentation/bloc/category_bloc.dart';
 
-import 'features/encryption/domain/entities/encrypted_file.dart';
+import 'features/encryption/data/models/encrypted_file_model.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -33,7 +33,7 @@ void main() async {
   // Register Hive type adapters before opening any box. The guard makes
   // hot-restart in development idempotent.
   if (!Hive.isAdapterRegistered(kEncryptedFileTypeId)) {
-    Hive.registerAdapter(EncryptedFileAdapter());
+    Hive.registerAdapter(EncryptedFileModelAdapter());
   }
   if (!Hive.isAdapterRegistered(kCategoryTypeId)) {
     Hive.registerAdapter(CategoryModelAdapter());

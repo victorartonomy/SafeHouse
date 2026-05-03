@@ -27,8 +27,8 @@ import 'features/cloud/presentation/cubits/cloud_backup_cubit.dart';
 import 'features/settings/presentation/cubits/settings_cubit.dart';
 import 'features/encryption/data/datasources/aes_encryption_service.dart';
 import 'features/encryption/data/datasources/encryption_local_datasource.dart';
+import 'features/encryption/data/models/encrypted_file_model.dart';
 import 'features/encryption/data/repositories/encryption_repository_impl.dart';
-import 'features/encryption/domain/entities/encrypted_file.dart';
 import 'features/encryption/domain/repositories/encryption_repository.dart';
 import 'features/encryption/presentation/cubits/encryption_cubit.dart';
 import 'features/encryption/presentation/cubits/history_cubit.dart';
@@ -84,7 +84,7 @@ Future<void> init() async {
   // Open the box here so it's ready before any datasource is constructed.
   // Using HiveAesCipher means the on-disk file is opaque — secret keys
   // can no longer be read by anyone with filesystem access.
-  final encryptedFilesBox = await Hive.openBox<EncryptedFile>(
+  final encryptedFilesBox = await Hive.openBox<EncryptedFileModel>(
     EncryptionLocalDataSourceImpl.boxName,
     encryptionCipher: HiveAesCipher(cipherKey),
   );

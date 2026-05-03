@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:path/path.dart' as p;
 import 'package:uuid/uuid.dart';
@@ -33,6 +34,7 @@ class EncryptionRepositoryImpl implements EncryptionRepository {
     required String secretKey,
     String? originalFileName,
     String? categoryId,
+    Uint8List? salt,
   }) async {
     try {
       // Prefer the caller-supplied name (which carries the MIME-derived
@@ -62,13 +64,13 @@ class EncryptionRepositoryImpl implements EncryptionRepository {
         // Embed the original filename inside the AEAD-protected plaintext
         // so decryption can recover the extension even without history.
         originalFileName: originalName,
+        salt: salt,
       );
 
       final record = EncryptedFile(
         id: id,
         originalName: originalName,
         encryptedPath: outputPath,
-        secretKey: secretKey,
         createdAt: DateTime.now().toUtc(),
         categoryId: categoryId,
       );
@@ -81,6 +83,9 @@ class EncryptionRepositoryImpl implements EncryptionRepository {
       throw EncryptionFailure('Encryption failed: $e');
     }
   }
+
+  @override
+  Future<Uint8List?> extractSalt(String filePath) => _encryptionService.extractSalt(filePath);
 
   @override
   Future<String> decryptFile({

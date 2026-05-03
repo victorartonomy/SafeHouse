@@ -77,6 +77,7 @@ class _EncryptScreenState extends State<EncryptScreen> {
         derivedKey,
         customFileName: _customNameController.text,
         categoryId: category.id,
+        salt: category.salt,
       );
     } else {
       // Manual key flow.
@@ -143,7 +144,7 @@ class _EncryptScreenState extends State<EncryptScreen> {
             return _SuccessView(
               title: 'File Encrypted',
               filePath: state.result.encryptedPath,
-              secretKey: state.result.secretKey,
+              secretKey: state.secretKey,
               originalName: state.result.originalName,
               onEncryptAnother: () => context.read<EncryptionCubit>().reset(),
             );
@@ -152,8 +153,7 @@ class _EncryptScreenState extends State<EncryptScreen> {
           final cubit = context.read<EncryptionCubit>();
           final loadingState = state is EncryptionLoading ? state : null;
           final isLoading = loadingState != null;
-          final selectedFile = state is EncryptionFileSelected ? state : null;
-
+          
           // ── Form view ────────────────────────────────────────────────
           return SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
@@ -170,8 +170,8 @@ class _EncryptScreenState extends State<EncryptScreen> {
                 _SectionLabel(number: '01', label: 'Choose File'),
                 const SizedBox(height: 10),
                 FilePickerTile(
-                  fileName: selectedFile?.fileName,
-                  filePath: selectedFile?.filePath,
+                  fileName: cubit.selectedFileName,
+                  filePath: cubit.selectedFilePath,
                   onTap: isLoading
                       ? () {}
                       : () => cubit.pickFileForEncryption(),

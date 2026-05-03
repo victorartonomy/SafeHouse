@@ -69,10 +69,13 @@ final class EncryptionSuccess extends EncryptionState {
   /// The completed [EncryptedFile] record (also saved to Hive history).
   final EncryptedFile result;
 
-  const EncryptionSuccess({required this.result});
+  /// The raw secret key used (so the UI can display it without saving it to DB).
+  final String secretKey;
+
+  const EncryptionSuccess({required this.result, required this.secretKey});
 
   @override
-  List<Object?> get props => [result];
+  List<Object?> get props => [result, secretKey];
 }
 
 /// File was decrypted successfully.

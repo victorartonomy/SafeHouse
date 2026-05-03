@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import '../entities/encrypted_file.dart';
 
 /// Abstract contract for encryption operations and history persistence.
@@ -19,7 +20,11 @@ abstract class EncryptionRepository {
     required String secretKey,
     String? originalFileName,
     String? categoryId,
+    Uint8List? salt,
   });
+
+  /// Extracts the salt from a file, if any.
+  Future<Uint8List?> extractSalt(String filePath);
 
   /// Decrypts [encryptedFilePath] using [secretKey].
   ///

@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:equatable/equatable.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -36,6 +38,9 @@ class EncryptionCubit extends Cubit<EncryptionState> {
   /// [PlatformFile.extension] is derived from the MIME type by file_picker
   /// so it is reliable even when the content-URI display name has no suffix.
   String? _selectedFileName;
+
+  String? get selectedFilePath => _selectedFilePath;
+  String? get selectedFileName => _selectedFileName;
 
   EncryptionCubit({required EncryptionRepository repository})
     : _repository = repository,
@@ -120,14 +125,9 @@ class EncryptionCubit extends Cubit<EncryptionState> {
   /// After emitting the key, the cubit restores the previous stable state so
   /// the screen doesn't reset (e.g. the picked filename remains visible).
   void generateKey() {
-    final previousState = state;
     final key = _repository.generateKey();
 
     emit(EncryptionKeyGenerated(generatedKey: key));
-
-    // Restore previous stable state immediately so the file-selection
-    // indicator and other UI elements remain intact.
-    emit(previousState);
   }
 
   // ── Encryption ─────────────────────────────────────────────────────────────
@@ -139,6 +139,7 @@ class EncryptionCubit extends Cubit<EncryptionState> {
     String secretKey, {
     String? customFileName,
     String? categoryId,
+    Uint8List? salt,
   }) async {
     final filePath = _selectedFilePath;
 
@@ -192,10 +193,11 @@ class EncryptionCubit extends Cubit<EncryptionState> {
         secretKey: secretKey.trim(),
         originalFileName: finalFileName,
         categoryId: categoryId,
+        salt: salt,
       );
       _selectedFilePath = null;
       _selectedFileName = null;
-      emit(EncryptionSuccess(result: result));
+      emit(EncryptionSuccess(result: result, secretKey: secretKey.trim()));
     } on Failure catch (f) {
       emit(EncryptionError(message: f.message));
     } catch (e) {

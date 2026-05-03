@@ -12,6 +12,7 @@ import '../cubits/encryption_cubit.dart';
 import '../widgets/file_picker_tile.dart';
 import '../widgets/key_field.dart';
 import '../widgets/result_card.dart';
+import '../../data/datasources/aes_encryption_service.dart';
 
 class DecryptScreen extends StatefulWidget {
   const DecryptScreen({super.key});
@@ -61,13 +62,25 @@ class _DecryptScreenState extends State<DecryptScreen> {
       if (password == null || password.isEmpty) return;
       if (!context.mounted) return;
 
+      final fileSalt = await sl<AesEncryptionService>().extractSalt(cubit.selectedFilePath!);
       final derivedKey = sl<DeriveKeyUseCase>().call(
         password: password,
-        salt: category.salt,
+        salt: fileSalt ?? category.salt,
       );
       cubit.decryptSelectedFile(derivedKey);
     } else {
-      cubit.decryptSelectedFile(_keyController.text);
+      String keyToUse = _keyController.text.trim();
+      final fileSalt = await sl<AesEncryptionService>().extractSalt(cubit.selectedFilePath!);
+      
+      if (fileSalt != null) {
+         if (!sl<AesEncryptionService>().isValidKey(keyToUse)) {
+            keyToUse = sl<DeriveKeyUseCase>().call(
+              password: keyToUse,
+              salt: fileSalt,
+            );
+         }
+      }
+      cubit.decryptSelectedFile(keyToUse);
     }
   }
 
@@ -110,8 +123,7 @@ class _DecryptScreenState extends State<DecryptScreen> {
           final cubit = context.read<EncryptionCubit>();
           final loadingState = state is EncryptionLoading ? state : null;
           final isLoading = loadingState != null;
-          final selectedFile = state is EncryptionFileSelected ? state : null;
-
+          
           // ── Form view ────────────────────────────────────────────────
           return SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
@@ -128,8 +140,8 @@ class _DecryptScreenState extends State<DecryptScreen> {
                 _SectionLabel(number: '01', label: 'Choose Encrypted File'),
                 const SizedBox(height: 10),
                 FilePickerTile(
-                  fileName: selectedFile?.fileName,
-                  filePath: selectedFile?.filePath,
+                  fileName: cubit.selectedFileName,
+                  filePath: cubit.selectedFilePath,
                   label: 'Pick an encrypted file',
                   onTap: isLoading
                       ? () {}
@@ -155,8 +167,8 @@ class _DecryptScreenState extends State<DecryptScreen> {
                   const SizedBox(height: 16),
                   KeyField(
                     controller: _keyController,
-                    label: 'Secret Key',
-                    hint: 'Paste the AES-256 key used during encryption',
+                    label: 'Secret Key or Password',
+                    hint: 'Paste the key or type the category password',
                   ),
                 ] else ...[
                   const SizedBox(height: 8),

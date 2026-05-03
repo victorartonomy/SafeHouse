@@ -9,25 +9,6 @@ import 'package:pointycastle/export.dart';
 import '../../../../core/errors/failures.dart';
 
 /// Stateless AES-256-GCM (AEAD) encryption/decryption service.
-///
-/// On-disk wire format:
-///
-///   `[IV (12 bytes)] || [ciphertext] || [auth tag (16 bytes)]`
-///
-/// Plaintext format (inside the ciphertext, version 0x01):
-///
-///   `[magic 0x53 0x46] || [version 0x01] || [nameLen u16-BE] ||
-///    [filename UTF-8 bytes] || [original file bytes]`
-///
-/// Embedding the filename inside the *authenticated* plaintext means:
-/// 1. Decryption can recover the original extension even if the Hive history
-///    record is gone (e.g. reinstall, share-imported file).
-/// 2. The auth tag covers the filename, so an attacker cannot mutate it
-///    without producing a tag mismatch.
-///
-/// Files encrypted by older versions (no header) are still decryptable —
-/// the decoder detects the absence of the magic bytes and treats the entire
-/// plaintext as the file body.
 class AesEncryptionService {
   static const int keyLength = 32; // 256-bit key
   static const int ivLength = 12; // 96-bit IV — GCM standard
@@ -37,6 +18,32 @@ class AesEncryptionService {
   static const int magic0 = 0x53;
   static const int magic1 = 0x46;
   static const int headerVersion = 0x01;
+
+  static const int magicSalt0 = 0x53;
+  static const int magicSalt1 = 0x41;
+  static const int magicSalt2 = 0x4C;
+  static const int magicSalt3 = 0x54;
+
+  /// Extracts the 16-byte salt from the file header if it exists.
+  /// Returns `null` if the file is legacy and has no salt header.
+  Future<Uint8List?> extractSalt(String filePath) async {
+    final file = File(filePath);
+    if (!await file.exists()) return null;
+    final handle = await file.open();
+    try {
+      final bytes = await handle.read(20);
+      if (bytes.length == 20 &&
+          bytes[0] == magicSalt0 &&
+          bytes[1] == magicSalt1 &&
+          bytes[2] == magicSalt2 &&
+          bytes[3] == magicSalt3) {
+        return bytes.sublist(4);
+      }
+      return null;
+    } finally {
+      await handle.close();
+    }
+  }
 
   /// Generates a cryptographically random 256-bit AES key.
   /// Returns the key as a standard base64 string safe for display/storage.
@@ -55,16 +62,12 @@ class AesEncryptionService {
     }
   }
 
-  /// Encrypts [inputPath] to [outputPath] using AES-256-GCM with [base64Key].
-  ///
-  /// Embeds [originalFileName] (if non-null) in the authenticated plaintext
-  /// header, so decryption can recover the file extension without external
-  /// metadata.
   Future<void> encryptFile({
     required String inputPath,
     required String outputPath,
     required String base64Key,
     String? originalFileName,
+    Uint8List? salt,
   }) async {
     final keyBytes = _decodeKey(base64Key);
 
@@ -80,6 +83,7 @@ class AesEncryptionService {
           outputPath: outputPath,
           keyBytes: keyBytes,
           originalFileName: originalFileName,
+          salt: salt,
         ),
       );
     } catch (e) {
@@ -87,13 +91,6 @@ class AesEncryptionService {
     }
   }
 
-  /// Decrypts [inputPath] to [outputPath] using AES-256-GCM with [base64Key].
-  ///
-  /// Returns the embedded original filename if the encrypted file carries a
-  /// v1 header; returns `null` for legacy files without a header.
-  ///
-  /// Throws [EncryptionFailure] if the auth tag fails to verify — the most
-  /// common cause is a wrong key, a tampered ciphertext, or a truncated file.
   Future<String?> decryptFile({
     required String inputPath,
     required String outputPath,
@@ -127,8 +124,6 @@ class AesEncryptionService {
     }
   }
 
-  // ── Helpers ────────────────────────────────────────────────────────────────
-
   Uint8List _decodeKey(String base64Key) {
     if (!isValidKey(base64Key)) {
       throw const InvalidKeyFailure();
@@ -137,19 +132,19 @@ class AesEncryptionService {
   }
 }
 
-// ── Isolate payloads ─────────────────────────────────────────────────────────
-
 class _EncryptJob {
   final String inputPath;
   final String outputPath;
   final Uint8List keyBytes;
   final String? originalFileName;
+  final Uint8List? salt;
 
   const _EncryptJob({
     required this.inputPath,
     required this.outputPath,
     required this.keyBytes,
     required this.originalFileName,
+    this.salt,
   });
 }
 
@@ -164,8 +159,6 @@ class _DecryptJob {
     required this.keyBytes,
   });
 }
-
-// ── Top-level isolate entry points ───────────────────────────────────────────
 
 Future<void> _encryptEntryPoint(_EncryptJob job) async {
   final iv = enc.IV.fromSecureRandom(AesEncryptionService.ivLength).bytes;
@@ -183,9 +176,20 @@ Future<void> _encryptEntryPoint(_EncryptJob job) async {
 
   final sink = File(job.outputPath).openWrite();
   try {
+    if (job.salt != null) {
+      final saltHeader = Uint8List(20);
+      saltHeader[0] = AesEncryptionService.magicSalt0;
+      saltHeader[1] = AesEncryptionService.magicSalt1;
+      saltHeader[2] = AesEncryptionService.magicSalt2;
+      saltHeader[3] = AesEncryptionService.magicSalt3;
+      saltHeader.setRange(4, 20, job.salt!);
+      sink.add(saltHeader);
+    }
+
     sink.add(iv);
 
-    // Header (only when caller supplied a filename — otherwise legacy format).
+    var pending = <int>[];
+
     if (job.originalFileName != null && job.originalFileName!.isNotEmpty) {
       final nameBytes = Uint8List.fromList(utf8.encode(job.originalFileName!));
       if (nameBytes.length > 0xFFFF) {
@@ -201,54 +205,65 @@ Future<void> _encryptEntryPoint(_EncryptJob job) async {
       header[4] = nameBytes.length & 0xFF;
       header.setRange(5, 5 + nameBytes.length, nameBytes);
 
-      debugPrint(
-        '[Enc] header bytes=${header.length} name="${job.originalFileName}"',
-      );
-
-      final out = Uint8List(header.length + 32);
-      final n = cipher.processBytes(header, 0, header.length, out, 0);
-      debugPrint('[Enc] header processBytes emitted n=$n');
-      if (n > 0) sink.add(Uint8List.fromList(out.sublist(0, n)));
+      pending.addAll(header);
     }
 
-    var encChunk = 0;
-    var totalCt = 0;
     await for (final chunk in File(job.inputPath).openRead()) {
-      final data = chunk is Uint8List ? chunk : Uint8List.fromList(chunk);
-      final out = Uint8List(data.length + 32);
-      final n = cipher.processBytes(data, 0, data.length, out, 0);
-      debugPrint('[Enc] chunk#$encChunk in=${data.length} ct=$n');
-      encChunk++;
-      if (n > 0) {
-        final emitted = Uint8List.fromList(out.sublist(0, n));
-        totalCt += emitted.length;
-        sink.add(emitted);
+      pending.addAll(chunk);
+      if (pending.length >= 16) {
+        final processLen = (pending.length ~/ 16) * 16;
+        final toProcess = Uint8List.fromList(pending.sublist(0, processLen));
+        final out = Uint8List(processLen + 32);
+        final n = cipher.processBytes(toProcess, 0, processLen, out, 0);
+        if (n > 0) sink.add(Uint8List.fromList(out.sublist(0, n)));
+        pending = pending.sublist(processLen);
       }
+    }
+
+    if (pending.isNotEmpty) {
+      final toProcess = Uint8List.fromList(pending);
+      final out = Uint8List(toProcess.length + 32);
+      final n = cipher.processBytes(toProcess, 0, toProcess.length, out, 0);
+      if (n > 0) sink.add(Uint8List.fromList(out.sublist(0, n)));
     }
 
     final tail = Uint8List(32);
     final tailLen = cipher.doFinal(tail, 0);
-    debugPrint('[Enc] doFinal tailLen=$tailLen');
     if (tailLen > 0) {
       final emitted = Uint8List.fromList(tail.sublist(0, tailLen));
-      totalCt += emitted.length;
       sink.add(emitted);
     }
-    debugPrint('[Enc] totalCiphertext=$totalCt (excludes IV)');
 
     await sink.flush();
-  } finally {
     await sink.close();
+  } catch (e) {
+    try {
+      await sink.close();
+    } catch (_) {}
+    final destFile = File(job.outputPath);
+    if (await destFile.exists()) {
+      await destFile.delete();
+    }
+    rethrow;
   }
 }
 
 Future<String?> _decryptEntryPoint(_DecryptJob job) async {
   final input = File(job.inputPath);
 
-  // Read the first 12 bytes (IV) for cipher init.
   final ivHandle = await input.open();
   Uint8List iv;
+  int offset = 0;
   try {
+    final possibleSaltHeader = await ivHandle.read(20);
+    if (possibleSaltHeader.length == 20 &&
+        possibleSaltHeader[0] == AesEncryptionService.magicSalt0 &&
+        possibleSaltHeader[1] == AesEncryptionService.magicSalt1 &&
+        possibleSaltHeader[2] == AesEncryptionService.magicSalt2 &&
+        possibleSaltHeader[3] == AesEncryptionService.magicSalt3) {
+      offset = 20;
+    }
+    await ivHandle.setPosition(offset);
     iv = await ivHandle.read(AesEncryptionService.ivLength);
   } finally {
     await ivHandle.close();
@@ -269,39 +284,40 @@ Future<String?> _decryptEntryPoint(_DecryptJob job) async {
   final headerParser = _HeaderParser();
 
   try {
-    var chunkIdx = 0;
-    var totalBytesWritten = 0;
-    await for (final chunk in input.openRead(AesEncryptionService.ivLength)) {
-      final data = chunk is Uint8List ? chunk : Uint8List.fromList(chunk);
-      final out = Uint8List(data.length + 32);
-      final n = cipher.processBytes(data, 0, data.length, out, 0);
-      debugPrint(
-        '[Dec] chunk#$chunkIdx in=${data.length} pt=$n decided=${headerParser._decided}',
-      );
-      chunkIdx++;
+    var pending = <int>[];
+    await for (final chunk in input.openRead(offset + AesEncryptionService.ivLength)) {
+      pending.addAll(chunk);
+      if (pending.length >= 16) {
+        final processLen = (pending.length ~/ 16) * 16;
+        final toProcess = Uint8List.fromList(pending.sublist(0, processLen));
+        final out = Uint8List(processLen + 32);
+        final n = cipher.processBytes(toProcess, 0, processLen, out, 0);
+        if (n > 0) {
+          final emitted = Uint8List.fromList(out.sublist(0, n));
+          headerParser.feed(emitted, sink);
+        }
+        pending = pending.sublist(processLen);
+      }
+    }
+
+    if (pending.isNotEmpty) {
+      final toProcess = Uint8List.fromList(pending);
+      final out = Uint8List(toProcess.length + 32);
+      final n = cipher.processBytes(toProcess, 0, toProcess.length, out, 0);
       if (n > 0) {
-        // Copy-out to detach from `out` (defensive against any PC reuse).
         final emitted = Uint8List.fromList(out.sublist(0, n));
-        totalBytesWritten += emitted.length;
         headerParser.feed(emitted, sink);
       }
     }
 
     final tail = Uint8List(32);
     final tailLen = cipher.doFinal(tail, 0);
-    debugPrint('[Dec] doFinal tailLen=$tailLen');
     if (tailLen > 0) {
       final emittedTail = Uint8List.fromList(tail.sublist(0, tailLen));
-      totalBytesWritten += emittedTail.length;
       headerParser.feed(emittedTail, sink);
     }
-    debugPrint('[Dec] totalPlaintext=$totalBytesWritten');
 
-    // No more bytes — flush whatever is still buffered (legacy file with
-    // a body shorter than the magic-byte probe length).
     headerParser.flushPending(sink);
-
-    debugPrint('[Dec] done. extractedName="${headerParser.originalName}"');
 
     await sink.flush();
     await sink.close();
@@ -309,24 +325,15 @@ Future<String?> _decryptEntryPoint(_DecryptJob job) async {
   } catch (err) {
     try {
       await sink.close();
-    } catch (_) {
-      /* already closed */
-    }
+    } catch (_) {}
     try {
       final partial = File(job.outputPath);
       if (await partial.exists()) await partial.delete();
-    } catch (_) {
-      /* best effort */
-    }
+    } catch (_) {}
     rethrow;
   }
 }
 
-/// Streaming parser for the optional v1 plaintext header.
-///
-/// Buffers decrypted output until it knows whether bytes 0..2 are the magic
-/// + version. If yes, parses [nameLen, filename] then forwards remainder to
-/// the sink. If no, dumps everything to the sink (legacy path).
 class _HeaderParser {
   String? originalName;
   bool _decided = false;
@@ -339,7 +346,6 @@ class _HeaderParser {
     }
     _buf.addAll(bytes);
 
-    // Need ≥3 bytes to check magic+version.
     if (_buf.length < 3) return;
 
     final hasMagic = _buf[0] == AesEncryptionService.magic0 &&
@@ -347,14 +353,12 @@ class _HeaderParser {
         _buf[2] == AesEncryptionService.headerVersion;
 
     if (!hasMagic) {
-      // Legacy file — pass everything through verbatim.
       sink.add(Uint8List.fromList(_buf));
       _buf.clear();
       _decided = true;
       return;
     }
 
-    // Need ≥5 bytes for u16-BE name length.
     if (_buf.length < 5) return;
     final nameLen = ((_buf[3] & 0xFF) << 8) | (_buf[4] & 0xFF);
 
@@ -369,9 +373,6 @@ class _HeaderParser {
     _decided = true;
   }
 
-  /// Drain anything still buffered when the input ends. This covers the
-  /// edge case where a legacy file's plaintext is shorter than 3 bytes,
-  /// or where the header was complete but no body bytes followed.
   void flushPending(IOSink sink) {
     if (_decided) return;
     if (_buf.isNotEmpty) sink.add(Uint8List.fromList(_buf));

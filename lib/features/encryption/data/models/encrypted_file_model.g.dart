@@ -1,43 +1,40 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'encrypted_file.dart';
+part of 'encrypted_file_model.dart';
 
 // **************************************************************************
 // TypeAdapterGenerator
 // **************************************************************************
 
-class EncryptedFileAdapter extends TypeAdapter<EncryptedFile> {
+class EncryptedFileModelAdapter extends TypeAdapter<EncryptedFileModel> {
   @override
   final int typeId = 0;
 
   @override
-  EncryptedFile read(BinaryReader reader) {
+  EncryptedFileModel read(BinaryReader reader) {
     final numOfFields = reader.readByte();
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return EncryptedFile(
+    return EncryptedFileModel(
       id: fields[0] as String,
       originalName: fields[1] as String,
       encryptedPath: fields[2] as String,
-      secretKey: fields[3] as String,
       createdAt: fields[4] as DateTime,
       categoryId: fields[5] as String?,
     );
   }
 
   @override
-  void write(BinaryWriter writer, EncryptedFile obj) {
+  void write(BinaryWriter writer, EncryptedFileModel obj) {
     writer
-      ..writeByte(6)
+      ..writeByte(5)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
       ..write(obj.originalName)
       ..writeByte(2)
       ..write(obj.encryptedPath)
-      ..writeByte(3)
-      ..write(obj.secretKey)
       ..writeByte(4)
       ..write(obj.createdAt)
       ..writeByte(5)
@@ -50,7 +47,7 @@ class EncryptedFileAdapter extends TypeAdapter<EncryptedFile> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is EncryptedFileAdapter &&
+      other is EncryptedFileModelAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }
