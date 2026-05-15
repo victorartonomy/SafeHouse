@@ -9,6 +9,13 @@ class AuthRepositoryImpl implements AuthRepository {
 
   AuthRepositoryImpl({required this.remoteDataSource});
 
+  String _normalizeErrorMessage(Object error) {
+    if (error is Failure) return error.message;
+    final message = error.toString();
+    const prefix = 'Exception: ';
+    return message.startsWith(prefix) ? message.substring(prefix.length) : message;
+  }
+
   @override
   Future<Either<Failure, AuthUser>> signInWithEmail({
     required String email,
@@ -21,7 +28,7 @@ class AuthRepositoryImpl implements AuthRepository {
       );
       return Right(userModel.toEntity());
     } catch (e) {
-      return Left(AuthFailure(e.toString()));
+      return Left(AuthFailure(_normalizeErrorMessage(e)));
     }
   }
 
@@ -37,7 +44,7 @@ class AuthRepositoryImpl implements AuthRepository {
       );
       return Right(userModel.toEntity());
     } catch (e) {
-      return Left(AuthFailure(e.toString()));
+      return Left(AuthFailure(_normalizeErrorMessage(e)));
     }
   }
 
@@ -47,7 +54,7 @@ class AuthRepositoryImpl implements AuthRepository {
       final userModel = await remoteDataSource.signInWithGoogle();
       return Right(userModel.toEntity());
     } catch (e) {
-      return Left(AuthFailure(e.toString()));
+      return Left(AuthFailure(_normalizeErrorMessage(e)));
     }
   }
 
@@ -57,7 +64,7 @@ class AuthRepositoryImpl implements AuthRepository {
       await remoteDataSource.signOut();
       return const Right(null);
     } catch (e) {
-      return Left(AuthFailure(e.toString()));
+      return Left(AuthFailure(_normalizeErrorMessage(e)));
     }
   }
 
@@ -67,7 +74,7 @@ class AuthRepositoryImpl implements AuthRepository {
       await remoteDataSource.deleteAccount();
       return const Right(null);
     } catch (e) {
-      return Left(AuthFailure(e.toString()));
+      return Left(AuthFailure(_normalizeErrorMessage(e)));
     }
   }
 
@@ -77,7 +84,7 @@ class AuthRepositoryImpl implements AuthRepository {
       final userModel = await remoteDataSource.getCurrentUser();
       return Right(userModel?.toEntity());
     } catch (e) {
-      return Left(AuthFailure(e.toString()));
+      return Left(AuthFailure(_normalizeErrorMessage(e)));
     }
   }
 

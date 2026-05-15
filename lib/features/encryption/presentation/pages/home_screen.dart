@@ -57,6 +57,13 @@ class HomeScreen extends StatelessWidget {
           Navigator.of(
             context,
           ).pushAndRemoveUntil(LoginScreen.route(), (route) => false);
+        } else if (state is AuthError) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.message),
+              backgroundColor: Colors.red,
+            ),
+          );
         }
       },
       child: Scaffold(

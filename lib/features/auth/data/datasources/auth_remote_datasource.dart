@@ -89,6 +89,9 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
       final GoogleSignInAuthentication googleAuth =
           await googleUser.authentication;
+      if (googleAuth.idToken == null && googleAuth.accessToken == null) {
+        throw Exception('Google authentication failed. Please try again.');
+      }
       final AuthCredential credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
@@ -126,6 +129,18 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         return 'The password provided is too weak. Please use a stronger password.';
       case 'invalid-credential':
         return 'Invalid credentials provided. Please check your email and password.';
+      case 'account-exists-with-different-credential':
+        return 'An account already exists with a different sign-in method.';
+      case 'credential-already-in-use':
+        return 'These credentials are already linked to another account.';
+      case 'requires-recent-login':
+        return 'Please sign in again to complete this sensitive action.';
+      case 'network-request-failed':
+        return 'Network error. Please check your connection and try again.';
+      case 'too-many-requests':
+        return 'Too many attempts. Please try again later.';
+      case 'user-mismatch':
+        return 'The current user does not match the requested credentials.';
       default:
         return e.message ?? 'An unknown authentication error occurred.';
     }
@@ -133,7 +148,9 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
   @override
   Future<void> signOut() async {
-    await googleSignIn.signOut();
+    try {
+      await googleSignIn.signOut();
+    } catch (_) {}
     await firebaseAuth.signOut();
   }
 
@@ -146,7 +163,13 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       if (user.providerData.any(
         (userInfo) => userInfo.providerId == 'google.com',
       )) {
-        await googleSignIn.disconnect();
+        try {
+          await googleSignIn.disconnect();
+        } catch (_) {
+          try {
+            await googleSignIn.signOut();
+          } catch (_) {}
+        }
       }
       await user.delete();
     } on FirebaseAuthException catch (e) {
