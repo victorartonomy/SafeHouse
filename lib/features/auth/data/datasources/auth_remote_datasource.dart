@@ -90,7 +90,10 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       final GoogleSignInAuthentication googleAuth =
           await googleUser.authentication;
       if (googleAuth.idToken == null && googleAuth.accessToken == null) {
-        throw Exception('Google authentication failed. Please try again.');
+        throw Exception(
+          'No authentication tokens received from Google. '
+          'Please try again and complete the sign-in flow.',
+        );
       }
       final AuthCredential credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
@@ -150,7 +153,9 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   Future<void> signOut() async {
     try {
       await googleSignIn.signOut();
-    } catch (_) {}
+    } catch (_) {
+      // Ignore Google sign-out failures so Firebase sign-out can still succeed.
+    }
     await firebaseAuth.signOut();
   }
 
@@ -166,6 +171,8 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         try {
           await googleSignIn.disconnect();
         } catch (_) {
+          // Fallback to a simple sign-out if disconnect fails; ignore errors so
+          // account deletion is not blocked.
           try {
             await googleSignIn.signOut();
           } catch (_) {}
