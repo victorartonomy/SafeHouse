@@ -9,11 +9,15 @@ class AuthRepositoryImpl implements AuthRepository {
 
   AuthRepositoryImpl({required this.remoteDataSource});
 
-  String _normalizeErrorMessage(Object error) {
-    if (error is Failure) return error.message;
-    final message = error.toString();
+  String _stripExceptionPrefix(String message) {
     const prefix = 'Exception: ';
     return message.startsWith(prefix) ? message.substring(prefix.length) : message;
+  }
+
+  String _normalizeErrorMessage(Object error) {
+    if (error is Failure) return _stripExceptionPrefix(error.message);
+    final message = error.toString();
+    return _stripExceptionPrefix(message);
   }
 
   @override
