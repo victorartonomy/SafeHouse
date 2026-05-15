@@ -126,8 +126,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       // Firebase accepts either token type when building credentials.
       if (googleAuth.idToken == null && googleAuth.accessToken == null) {
         throw Exception(
-          'No authentication tokens received from Google. '
-          'Please try again and complete the sign-in flow.',
+          'No authentication tokens received from Google. Please try again.',
         );
       }
       final AuthCredential credential = GoogleAuthProvider.credential(
