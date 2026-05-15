@@ -54,6 +54,19 @@ To run the suite of unit and widget tests:
 flutter test
 ```
 
+## ⚙️ CI/CD
+
+This repository includes GitHub Actions workflows:
+
+* **CI (`.github/workflows/ci.yml`)**
+  * Runs on pull requests and pushes to `main`/`master`.
+  * Installs dependencies, checks formatting, runs `flutter analyze`, and runs `flutter test`.
+* **CD (`.github/workflows/cd.yml`)**
+  * Runs manually (`workflow_dispatch`) or on tags matching `v*` (for example `v1.0.0`).
+  * Builds a release Android APK.
+  * Uploads the APK as a workflow artifact.
+  * On version tags, also creates/updates a GitHub Release and attaches the APK.
+
 ## 🔒 Security Notice
 
 SafeHouse is designed as a secure vault for your files. Please remember to securely store your **Secret Keys** or **Category Passwords**. If you lose your key/password, the encrypted files cannot be recovered.
