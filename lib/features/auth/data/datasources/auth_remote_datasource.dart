@@ -157,8 +157,8 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       await googleSignIn.signOut();
     } catch (e, stackTrace) {
       // Log Google sign-out failures (e.g., network issues or revoked
-      // permissions) without blocking Firebase sign-out. Firebase errors
-      // still propagate to the caller.
+      // permissions) without blocking Firebase sign-out. Any errors from the
+      // subsequent Firebase sign-out call still propagate to the caller.
       developer.log(
         'Google sign-out failed.',
         error: e,
