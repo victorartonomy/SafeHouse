@@ -91,6 +91,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
       final GoogleSignInAuthentication googleAuth =
           await googleUser.authentication;
+      // Accept either token; fail only if both are missing.
       if (googleAuth.idToken == null && googleAuth.accessToken == null) {
         throw Exception(
           'No authentication tokens received from Google. '
@@ -156,7 +157,8 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     try {
       await googleSignIn.signOut();
     } catch (e, stackTrace) {
-      // Ignore Google sign-out failures so Firebase sign-out can still succeed.
+      // Ignore Google sign-out failures (e.g., network issues or revoked
+      // permissions) so Firebase sign-out can still succeed.
       developer.log(
         'Google sign-out failed.',
         error: e,
@@ -179,7 +181,8 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         try {
           await googleSignIn.disconnect();
         } catch (e, stackTrace) {
-          // Fallback to a simple sign-out if disconnect fails; ignore errors so
+          // Fallback to a simple sign-out if disconnect fails (for example,
+          // due to network issues or revoked permissions); ignore errors so
           // account deletion is not blocked.
           developer.log(
             'Google disconnect failed. Falling back to sign-out.',
