@@ -1,3 +1,5 @@
+import 'dart:developer' as developer;
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../models/auth_user_model.dart';
@@ -153,8 +155,14 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   Future<void> signOut() async {
     try {
       await googleSignIn.signOut();
-    } catch (_) {
+    } catch (e, stackTrace) {
       // Ignore Google sign-out failures so Firebase sign-out can still succeed.
+      developer.log(
+        'Google sign-out failed.',
+        error: e,
+        stackTrace: stackTrace,
+        name: 'AuthRemoteDataSource',
+      );
     }
     await firebaseAuth.signOut();
   }
@@ -170,12 +178,25 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       )) {
         try {
           await googleSignIn.disconnect();
-        } catch (_) {
+        } catch (e, stackTrace) {
           // Fallback to a simple sign-out if disconnect fails; ignore errors so
           // account deletion is not blocked.
+          developer.log(
+            'Google disconnect failed. Falling back to sign-out.',
+            error: e,
+            stackTrace: stackTrace,
+            name: 'AuthRemoteDataSource',
+          );
           try {
             await googleSignIn.signOut();
-          } catch (_) {}
+          } catch (signOutError, signOutStackTrace) {
+            developer.log(
+              'Google sign-out failed after disconnect error.',
+              error: signOutError,
+              stackTrace: signOutStackTrace,
+              name: 'AuthRemoteDataSource',
+            );
+          }
         }
       }
       await user.delete();
